@@ -1,0 +1,24 @@
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<link rel="shortcut icon" href="/static/img/favicon.png" />
+<meta name="author" content="Limbo" />
+<meta name="description" content="BTC Realtime ticker" />
+<meta name="keywords" content="Go, golang, BTC">
+
+<link href="/static/css/bootstrap_custom.css" rel="stylesheet" />
+<link href="/static/css/ns_style.css" rel="stylesheet" />
+
+
+<script src="/static/js/jquery.min.js"></script>
+<script src="/static/js/bootstrap.min.js"></script>
+
+<script src="/static/js/WebCMSpack.js"></script>
+<script src="/static/js/WebCMS.js"></script>
+<script src="/static/js/WebCMSstart.js"></script>
+<script src="/static/js/main.js"></script>
+
+{{if .IsLongPolling}}
+<script src="/static/js/longpolling.js"></script>
+{{end}}
+{{if .IsWebSocket}}
+<script src="/static/js/websocket.js"></script>
+{{end}}
