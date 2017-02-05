@@ -136,6 +136,7 @@ func btcticker_loop() {
 			ticker_active = true
 		case <- tickChan:
 			if (ticker_active) {
+				go func() {
 				beego.Info("Ticker ticked")
 				Block{
 					Try: func() {
@@ -151,6 +152,7 @@ func btcticker_loop() {
 						tickChan = ticker.C
 					},
 				}.Do()
+				}()
 			}
 		case <- doneChan:
 			fmt.Println("Done")
@@ -251,8 +253,26 @@ func btcticker_loop() {
 
 func init() {
 
+/*
+	//=========================================================================================================
+	TODO: Pieprasījumi:
+
+	https://btc-e.com/api/2/btc_usd/ticker:  Response: {"ticker":{"high":1014.291,"low":988.628,"avg":1001.4595,"vol":4785411.39115,"vol_cur":4780.58813,"last":992.999,"buy":992.999,"sell":992.001,"updated":1486302789,"server_time":1486302790}}
+
+	https://btc-e.com/api/2/btc_eur/ticker:  Response: {"ticker":{"high":967.5,"low":937.86101,"avg":952.680505,"vol":53526.62568,"vol_cur":56.15161,"last":945,"buy":949.64199,"sell":945.00001,"updated":1486302835,"server_time":1486302837}}
+
+	https://data.btcchina.com/data/trades
+
+	[{"date":"1486216884","price":7110,"amount":0.001,"tid":"123520693"},{"date":"1486216915","price":7109.99,"amount":10,"tid":"123520694"},{"date":"1486216950","price":7110,"amount":0.0142,"tid":"123520695"},{"date":"1486216997","price":7109.99,"amount":0.0045,"tid":"123520696"},{"date":"1486217018","price":7109.99,"amount":0.0002,"tid":"123520697"},{"date":"1486217018","price":7110,"amount":0.0541,"tid":"123520698"},{"date":"1486217041","price":7110,"amount":0.0047,"tid":"123520699"},{"date":"1486217095","price":7100.51,"amount":0.0219,"tid":"123520700"},{"date":"1486217101","price":7109.99,"amount":1,"tid":"123520701"},{"date":"1486217101","price":7109.99,"amount":3,"tid":"123520702"},{"date":"1486217101","price":7109.99,"amount":1,"tid":"123520703"},{"date":"1486217101","price":7109.99,"amount":6,"tid":"123520704"},{"date":"1486217101","price":7109.99,"amount":1,"tid":"123520705"},{"date":"1486217123","price":7110,"amount":0.1723,"tid":"123520706"},{"date":"1486217123","price":7110,"amount":0.0602,"tid":"123520707"},{"date":"1486217123","price":7110.85,"amount":0.11,"tid":"123520708"},{"date":"1486217123","price":7115,"amount":0.001,"tid":"123520709"},{"date":"1486217123","price":7115,"amount":0.194,"tid":"123520710"},{"date":"1486217123","price":7118,"amount":0.996,"tid":"123520711"},{"date":"1486217123","price":7118,"amount":1,"tid":"123520712"},{"date":"1486217123","price":7118,"amount":0.232,"tid":"123520713"},{"date":"1486217123","price":7118,"amount":0.0097,"tid":"123520714"},{"date":"1486217123","price":7119,"amount":0.008,"tid":"123520715"},{"date":"1486217123","price":7119.98,"amount":0.0635,"tid":"123520716"},{"date":"1486217123","price":7120,"amount":0.3099,"tid":"123520717"},
 
 
+	https://api.cryptonator.com/api/ticker/btc-usd
+
+	{"ticker":{"base":"BTC","target":"USD","price":"1013.55180841","volume":"35105.26779886","change":"-0.94918916"},"timestamp":1486303741,"success":true,"error":""}
+
+
+	//=========================================================================================================
+*/
 
 	price_sources.PushBack(newPriceSource("BTC-USD-coinbase-buy",  "https://api.coinbase.com/v2/prices/BTC-USD/buy","USD/BTC","BUY")) // Add price_source to the end of list.
 	price_sources.PushBack(newPriceSource("BTC-USD-coinbase-sell", "https://api.coinbase.com/v2/prices/BTC-USD/sell","USD/BTC","SELL"))
