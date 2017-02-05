@@ -56,7 +56,7 @@ var fetch = function () {
                             $("#left-panel-line3-2").html(event.Msg_cl);
                         }}
 
-                    if (event.Msg_target == "SELL"){
+                    if (event.Msg_target == "SPOT"){
                         if (event.Msg_cl == "USD/BTC"){
                             $("#left-panel-line3-3").html(event.Amount);
                             $("#left-panel-line3-4").html(event.Msg_cl);

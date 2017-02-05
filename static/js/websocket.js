@@ -56,7 +56,7 @@ $(document).ready(function () {
                         $("#left-panel-line3-2").html(data.Msg_cl);
                     }}
 
-                if (data.Msg_target == "SELL"){
+                if (data.Msg_target == "SPOT"){
                     if (data.Msg_cl == "USD/BTC"){
                         $("#left-panel-line3-3").html(data.Amount);
                         $("#left-panel-line3-4").html(data.Msg_cl);
