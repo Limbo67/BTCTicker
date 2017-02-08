@@ -5,7 +5,7 @@ import (
 	"container/list"
 	"github.com/astaxie/beego"
 	"github.com/gorilla/websocket"
-	"BTCTicker/models"
+	"btcticker/models"
 	"fmt"
 	"runtime"
 	"encoding/json"
@@ -136,7 +136,7 @@ func btcticker_loop() {
 			ticker_active = true
 		case <- tickChan:
 			if (ticker_active) {
-				go func() {
+				//go func() {
 				beego.Info("Ticker ticked")
 				Block{
 					Try: func() {
@@ -152,7 +152,7 @@ func btcticker_loop() {
 						tickChan = ticker.C
 					},
 				}.Do()
-				}()
+				//}()
 			}
 		case <- doneChan:
 			fmt.Println("Done")
@@ -304,6 +304,9 @@ func checkPriceSources () {
 	for ps := price_sources.Front(); ps != nil; ps = ps.Next()  {
 		if (!ps.Value.(PriceSource).In_progress){      // in_progress not used now
 
+
+			//ps.Value.(PriceSource).In_progress = true
+
 			ps_obj := ps.Value.(PriceSource)
 			ps_name := ps_obj.Name
 			url_host := ps_obj.Url_host
@@ -366,7 +369,7 @@ func checkPriceSources () {
 					//var curr_data map[string]interface{}
 
 					if err := json.Unmarshal(data, &dat); err != nil {
-						panic(err)
+						fmt.Printf("[%s] json.Unmarshal error: %s\n", obj_str , err)
 					}
 					//fmt.Println(dat)  // map[data:map[amount:1022.42 currency:USD]]
 
@@ -437,6 +440,8 @@ func checkPriceSources () {
 			//ps.Value.(PriceSource).SetInProgress()
 			//ps.Value.(PriceSource).GetPrice()
 
+			ps_obj.SetInProgress()
+			ps_obj.GetPrice()
 
 		//	trace()
 		}  else {
