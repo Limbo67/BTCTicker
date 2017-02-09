@@ -2,7 +2,7 @@
 package controllers
 
 import (
-	"BTCTicker/models"
+	"btcticker/models"
 )
 
 // LongPollingController handles long polling requests.

@@ -15,6 +15,8 @@ import (
 	"sync"
 	"strconv"
 	"time"
+	"errors"
+	"strings"
 )
 
 type Subscription struct {
@@ -39,29 +41,85 @@ type Subscriber struct {
 	Conn *websocket.Conn // Only for WebSocket users; otherwise nil.
 }
 
-type PriceSource struct {
+
+//########################################################################################################
+//########################################################################################################
+type Value struct {
 	Name string
 	Url_host string
 	In_progress bool
 	Msg_cl string
 	Msg_target string
 }
-func (f *PriceSource) SetInProgress() {
-	f.In_progress = true
+type Node struct {
+	Value				// Embedded struct
+	next, prev  *Node
 }
-
-func (f *PriceSource) ClearInProgress() {
-	f.In_progress = false
+type List struct {
+	head, tail *Node
 }
-
-
-func (r PriceSource) GetPrice() {
-	fmt.Println("PriceSource GetPrice()")
+func (l *List) First() *Node {
+	return l.head
 }
-
-func newPriceSource(Name, Url_host, Msg_cl, Msg_target string) PriceSource {
-	return PriceSource{Name, Url_host, false, Msg_cl, Msg_target}
+func (n *Node) Next() *Node {
+	return n.next
 }
+func (n *Node) Prev() *Node {
+	return n.prev
+}
+// Create new node with value
+func (l *List) Push(v Value) *List {
+	n := &Node{Value: v}
+	if l.head == nil {
+		l.head = n		// First node
+	} else {
+		l.tail.next = n	// Add after prev last node
+		n.prev = l.tail // Link back to prev last node
+	}
+	l.tail = n  		// reset tail to newly added node
+	return l
+}
+func (l *List) Find(name string) *Node {
+	found := false
+	var ret *Node = nil
+	for n := l.First(); n != nil && !found; n = n.Next() {
+		if n.Value.Name == name {
+			found = true
+			ret = n
+		}
+	}
+	return ret
+}
+func (l *List) Delete(name string) bool {
+	success := false
+	node2del := l.Find(name)
+	if node2del != nil {
+		fmt.Println("Delete - FOUND: ", name)
+		prev_node := node2del.prev
+		next_node := node2del.next
+		// Remove this node
+		prev_node.next = node2del.next
+		next_node.prev = node2del.prev
+		success = true
+	}
+	return success
+}
+var errEmpty = errors.New("ERROR - List is empty")
+// Pop last item from list
+func (l *List) Pop() (v Value, err error) {
+	if l.tail == nil {
+		err = errEmpty
+	} else {
+		v = l.tail.Value
+		l.tail = l.tail.prev
+		if l.tail == nil {
+			l.head = nil
+		}
+	}
+	return v, err
+}
+//########################################################################################################
+//########################################################################################################
 
 type Block struct {
 	Try     func()
@@ -110,7 +168,12 @@ var (
 	waitingList = list.New()
 	subscribers = list.New()
 
-	price_sources = list.New()
+
+	price_sources = new(List)  // Create Doubly Linked List
+	dashes = strings.Repeat("-", 50)
+	processed = make(map[*Node]bool)
+
+
 	m sync.Mutex
 	wg sync.WaitGroup
 
@@ -273,15 +336,12 @@ func init() {
 
 	//=========================================================================================================
 */
-
-	price_sources.PushBack(newPriceSource("BTC-USD-coinbase-buy",  "https://api.coinbase.com/v2/prices/BTC-USD/buy","USD/BTC","BUY")) // Add price_source to the end of list.
-	price_sources.PushBack(newPriceSource("BTC-USD-coinbase-sell", "https://api.coinbase.com/v2/prices/BTC-USD/sell","USD/BTC","SELL"))
-	price_sources.PushBack(newPriceSource("BTC-EUR-coinbase-buy",  "https://api.coinbase.com/v2/prices/BTC-EUR/buy","EUR/BTC","BUY"))
-	price_sources.PushBack(newPriceSource("BTC-EUR-coinbase-sell", "https://api.coinbase.com/v2/prices/BTC-EUR/sell","EUR/BTC","SELL"))
-	price_sources.PushBack(newPriceSource("BTC-USD-coinbase-spot", "https://api.coinbase.com/v2/prices/spot?currency=USD","USD/BTC","SPOT"))
-	price_sources.PushBack(newPriceSource("BTC-EUR-coinbase-spot", "https://api.coinbase.com/v2/prices/spot?currency=EUR","EUR/BTC","SPOT"))
-
-
+	price_sources.Push(Value{Name: "BTC-USD-coinbase-buy", Url_host: "https://api.coinbase.com/v2/prices/BTC-USD/buy", Msg_cl: "USD/BTC", Msg_target: "BUY"})
+	price_sources.Push(Value{Name: "BTC-USD-coinbase-sell", Url_host: "https://api.coinbase.com/v2/prices/BTC-USD/sell", Msg_cl: "USD/BTC", Msg_target: "SELL"})
+	price_sources.Push(Value{Name: "BTC-EUR-coinbase-buy",  Url_host: "https://api.coinbase.com/v2/prices/BTC-EUR/buy", Msg_cl: "EUR/BTC", Msg_target: "BUY"})
+	price_sources.Push(Value{Name: "BTC-EUR-coinbase-sell", Url_host: "https://api.coinbase.com/v2/prices/BTC-EUR/sell", Msg_cl: "EUR/BTC", Msg_target: "SELL"})
+	price_sources.Push(Value{Name: "BTC-USD-coinbase-spot", Url_host: "https://api.coinbase.com/v2/prices/spot?currency=USD", Msg_cl: "USD/BTC", Msg_target: "SPOT"})
+	price_sources.Push(Value{Name: "BTC-EUR-coinbase-spot", Url_host: "https://api.coinbase.com/v2/prices/spot?currency=EUR", Msg_cl: "EUR/BTC", Msg_target: "SPOT"})
 
 
 	go btcticker_loop()
@@ -299,15 +359,31 @@ func isUserExist(subscribers *list.List, user string) bool {
 
 
 func checkPriceSources () {
+/*
+var elem_num = 0;
 
+	fmt.Println(dashes)
 
-	for ps := price_sources.Front(); ps != nil; ps = ps.Next()  {
-		if (!ps.Value.(PriceSource).In_progress){      // in_progress not used now
+	for ps2 := price_sources.First(); ps2 != nil; ps2 = ps2.Next()  {
 
+		fmt.Printf("Element:[%d] In_progress:[%v]\n", elem_num, ps2.Value.In_progress)
+		elem_num++;
 
-			//ps.Value.(PriceSource).In_progress = true
+		if processed[ps2] {
+			fmt.Printf("%s as been processed\n", ps2.Value)
+		}
+		//processed[ps2] = true
+	}
+*/
+	fmt.Println(dashes)
 
-			ps_obj := ps.Value.(PriceSource)
+	for ps := price_sources.First(); ps != nil; ps = ps.Next()  {
+		if (!ps.Value.In_progress){      // in_progress not used now
+
+			processed[ps] = true
+			ps.Value.In_progress = true
+
+			ps_obj := ps.Value
 			ps_name := ps_obj.Name
 			url_host := ps_obj.Url_host
 			msg_cl := ps_obj.Msg_cl
@@ -424,7 +500,8 @@ func checkPriceSources () {
 				},
 				Finally: func() {
 
-
+					processed[ps] = false
+					ps.Value.In_progress = false
 
 				},
 			}.Do()
@@ -433,19 +510,9 @@ func checkPriceSources () {
 //#############################################################################################################################
 //#############################################################################################################################
 
-
-
-
-
-			//ps.Value.(PriceSource).SetInProgress()
-			//ps.Value.(PriceSource).GetPrice()
-
-			ps_obj.SetInProgress()
-			ps_obj.GetPrice()
-
 		//	trace()
 		}  else {
-			ps_obj := ps.Value.(PriceSource)
+			ps_obj := ps.Value
 			fmt.Printf("[%s] in progress ...\n", ps_obj.Name)
 		}
 	}

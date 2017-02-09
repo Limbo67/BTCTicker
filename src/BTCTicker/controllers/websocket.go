@@ -8,7 +8,7 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/gorilla/websocket"
 
-	"BTCTicker/models"
+	"btcticker/models"
 
 )
 
